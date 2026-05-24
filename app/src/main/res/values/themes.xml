@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--
+        Shell theme for the Activity window only — Compose renders all actual UI.
+        Parent must be a MaterialComponents theme so that colorPrimaryVariant and
+        related attrs (pulled in by appcompat/activity transitive deps) all resolve.
+    -->
+    <style name="Theme.SACNController" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:statusBarColor">#1A1A22</item>
+        <item name="android:navigationBarColor">#1A1A22</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>
