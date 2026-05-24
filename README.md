@@ -1,44 +1,46 @@
 # sACN Controller (Android)
 
-Professional E1.31 sACN lighting controller for Android with Jetpack Compose.
+Professional E1.31 sACN lighting controller for Android.
 
-## Features
+## Quick Start
 
-- **GDTF profile import** — Parse and use GDTF fixture profiles
-- **Fixture patching** — Patch fixtures across multiple sACN universes
-- **Manual DMX control** — Per-channel control with 8-bit and 16-bit support
-- **Looks** — Save and recall complete DMX snapshots with tagging
-- **Cue Lists** — Sequenced playback with smoothstep crossfades, delays, and timed auto-GO
-- **D16xy converter** — Convert D16xy sACN input to fixture-specific DMX output
-- **DMX monitor** — View live DMX values per universe
-- **Fixture groups** — Multi-select and group control
-- **Show file export/import** — Full show file format for backup and sharing
-- **Blackout** — Instant kill switch
-
-## Requirements
-
-- Android 8.0+ (API 26)
+### Requirements
+- **Android Studio** (latest stable)
+- Android device running **Android 8.0+** (API 26)
 - Wi-Fi connection for sACN multicast
 
-## Build
+### Build & Run
+1. Clone: `git clone https://github.com/entertainmentcontrolsystems/sACN-Controller-Android.git`
+2. Open in Android Studio
+3. Wait for Gradle sync to complete
+4. Connect your Android device via USB (with USB debugging enabled)
+5. Press Run ▶️
 
-1. Open in Android Studio
-2. Sync Gradle
-3. Build → Run on device
+All dependencies are declared in `build.gradle.kts` — Gradle handles everything automatically.
+
+### What It Does
+- Import GDTF fixture profiles
+- Patch fixtures across multiple sACN universes
+- Manual DMX control with 8-bit and 16-bit channel support
+- Save/recall Looks (DMX snapshots) with searchable tags
+- Cue Lists with crossfades, delays, and timed auto-advance
+- D16xy converter for ETC EOS integration
+- Live DMX monitor per universe
+- Fixture groups with multi-select control
+- Show file export/import for backup and sharing
+- Blackout safety
 
 ## Architecture
 
 ```
 app/src/main/java/com/sacn/controller/
-├── sacn/           # sACN sender/receiver (shared library)
+├── sacn/           # sACN sender/receiver (via sacn-common)
 ├── engine/         # Cue list crossfade engine
 ├── gdtf/           # GDTF XML parser
 ├── model/          # Data models
 ├── data/           # Room database
 ├── ui/             # Compose screens
-└── viewmodel/      # Orchestrating ViewModel + focused controllers
-
-sacn-common/        # Shared sACN/Art-Net library
+└── viewmodel/      # ViewModel + focused controllers
 ```
 
 ## License
