@@ -100,4 +100,9 @@ class FixtureController(
             )
         }
     }
+
+    suspend fun updateFixture(fixture: FixtureInstance) {
+        val order = db.instanceDao().maxSortOrder()?.plus(1) ?: 0
+        db.instanceDao().upsert(fixture.toEntity(order))
+    }
 }

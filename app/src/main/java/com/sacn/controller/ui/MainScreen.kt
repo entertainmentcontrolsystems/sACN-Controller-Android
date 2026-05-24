@@ -69,7 +69,8 @@ fun MainScreen(vm: MainViewModel) {
         if (result.resultCode == Activity.RESULT_OK) {
             val uri: Uri = result.data?.data ?: return@rememberLauncherForActivityResult
             val name = uri.lastPathSegment?.substringAfterLast('/') ?: "fixture.gdtf"
-            vm.importGdtf(ctx, uri, name)
+            val bytes = ctx.contentResolver.openInputStream(uri)?.readBytes() ?: return@rememberLauncherForActivityResult
+            vm.importGdtfProfile(bytes, name)
         }
     }
 
@@ -164,7 +165,7 @@ fun MainScreen(vm: MainViewModel) {
                     looks = state.looks,
                     onRecall = vm::recallLook,
                     onDelete = vm::deleteLook,
-                    onRename = vm::renameLook,
+                    onRename = vm::setLookTags,
                     onSetTags = vm::setLookTags
                 )
             }
@@ -177,10 +178,10 @@ fun MainScreen(vm: MainViewModel) {
                     dmxValues     = state.dmxValues,
                     selectedId    = state.selectedFixtureId,
                     multiSelected = state.multiSelectedIds,
-                    onSelect      = vm::selectFixture,
+                    onSelect      = vm::toggleFixtureSelection,
                     onToggleMulti = vm::toggleFixtureSelection,
                     onEdit        = { editingFixture = it },
-                    onRemove      = vm::removeFixture
+                    onRemove      = vm::deleteFixture
                 )
             }
             Box(Modifier.weight(1f).fillMaxWidth()) {
