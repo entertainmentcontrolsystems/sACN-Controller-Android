@@ -37,8 +37,14 @@ fun ConverterScreen(vm: MainViewModel) {
     val colorChannels = outMode?.channels
         ?.filter { it.category == ChannelCategory.COLOR && it.offset !in fineOffsets }
         ?: emptyList()
-    // Check if this is a direct xy fixture (has CIE_x/CIE_y or coordinate channels)
-    val isXyFixture = outMode?.channels?.any { ch ->
+    // Check if this is a direct xy fixture
+    // Detect by channel names OR by mode name (e.g. Arri "LE x,y Coordinate")
+    val modeNameHintsXy = outMode?.name?.let { n ->
+        n.contains("xy", ignoreCase = true) ||
+        n.contains("coordinate", ignoreCase = true) ||
+        n.startsWith("LE ")
+    } == true
+    val isXyFixture = modeNameHintsXy || (outMode?.channels?.any { ch ->
         val n = ch.name
         n in setOf("CIE_X", "CIE_x", "ColorCoordinate_X", "x_coordinate", "x_Coordinate") ||
         (n.contains("CIE", ignoreCase = true) && n.contains("X")) ||
@@ -48,7 +54,7 @@ fun ConverterScreen(vm: MainViewModel) {
         n in setOf("CIE_Y", "CIE_y", "ColorCoordinate_Y", "y_coordinate", "y_Coordinate") ||
         (n.contains("CIE", ignoreCase = true) && n.contains("Y")) ||
         (n.contains("xy", ignoreCase = true) && n.contains("Y", ignoreCase = true))
-    } == true
+    } == true)
 
     Column(
         modifier = Modifier

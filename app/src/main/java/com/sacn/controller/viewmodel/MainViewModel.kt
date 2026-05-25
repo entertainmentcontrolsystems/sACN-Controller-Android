@@ -545,6 +545,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         // Detect direct xy fixtures (CIE_X/CIE_Y, ColorCoordinate, or any x/y channel pair)
+        // Also detect by mode name for fixtures like Arri Skypanel "LE x,y Coordinate"
+        val modeNameHintsXy = mode.name.contains("xy", ignoreCase = true) ||
+            mode.name.contains("coordinate", ignoreCase = true) ||
+            mode.name.contains("LE ", ignoreCase = false)
+
         val cieX = mode.channels.find {
             val n = it.name
             n in setOf("CIE_X", "CIE_x", "ColorCoordinate_X", "x_coordinate", "x_Coordinate") ||
@@ -563,6 +568,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             val xVal = (x * cieX.maxValue).toInt().coerceIn(0, cieX.maxValue)
             val yVal = (y * cieY.maxValue).toInt().coerceIn(0, cieY.maxValue)
             val newVals = mutableMapOf(cieX.offset to xVal, cieY.offset to yVal)
+
+            // Handle multiple light engines (Arri LE xy mode has 2+ LEs)
+            val extraLePairs = mode.channels.filterIndexed { idx, ch ->
+                idx > mode.channels.indexOf(cieX) &&
+                (ch.name.contains("CIE", ignoreCase = true) ||
+                 ch.name.contains("Coordinate", ignoreCase = true) ||
+                 (modeNameHintsXy && (ch.name.contains("Color") || ch.name.contains("RGB"))))
+            }
 
             val dimmerChXY = mode.channels.find { it.category == ChannelCategory.INTENSITY }
             if (dimmerChXY != null) {
