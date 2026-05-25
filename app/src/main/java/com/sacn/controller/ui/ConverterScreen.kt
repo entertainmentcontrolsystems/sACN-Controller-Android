@@ -37,6 +37,12 @@ fun ConverterScreen(vm: MainViewModel) {
     val colorChannels = outMode?.channels
         ?.filter { it.category == ChannelCategory.COLOR && it.offset !in fineOffsets }
         ?: emptyList()
+    // Check if this is a direct xy fixture (has CIE_X/CIE_Y channels)
+    val isXyFixture = outMode?.channels?.any {
+        it.name in setOf("CIE_X", "CIE_x", "ColorCoordinate_X")
+    } == true && outMode?.channels?.any {
+        it.name in setOf("CIE_Y", "CIE_y", "ColorCoordinate_Y")
+    } == true
 
     Column(
         modifier = Modifier
@@ -159,7 +165,7 @@ fun ConverterScreen(vm: MainViewModel) {
         }
 
         // ── Live CIE display ──────────────────────────────────────────────────
-        if (state.converterRunning && colorChannels.isNotEmpty()) {
+        if (state.converterRunning && (colorChannels.isNotEmpty() || isXyFixture)) {
             SectionHeader("Live Input")
 
             if (input != null) {
@@ -171,11 +177,13 @@ fun ConverterScreen(vm: MainViewModel) {
                             MetricBadge("x", "%.4f".format(x))
                             MetricBadge("y", "%.4f".format(y))
                         }
-                        // Show CIE diagram in read-only mode (no touch → no onValueChange)
+                        // Show CIE diagram: read-only for both xy pass-through and emitter mix
+                        // XY fixtures don't have colorChannels for the picker but still display the dot
                         CieColorPicker(
-                            colorChannels = colorChannels,
+                            colorChannels = if (isXyFixture) emptyList() else colorChannels,
                             values        = state.dmxValues[cfg.outputFixtureId] ?: emptyMap(),
-                            onValueChange = { _, _ -> }   // read-only here; writes go via converter engine
+                            onValueChange = { _, _ -> },   // read-only here; writes go via converter engine
+                            overrideXy    = if (isXyFixture) Pair(x, y) else null
                         )
                     }
                 }
@@ -186,7 +194,7 @@ fun ConverterScreen(vm: MainViewModel) {
                     }
                 }
             }
-        } else if (state.converterRunning && colorChannels.isEmpty()) {
+        } else if (state.converterRunning && colorChannels.isEmpty() && !isXyFixture) {
             Surface(color = BgCard, shape = RoundedCornerShape(10.dp)) {
                 Box(Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     Text(

@@ -102,13 +102,18 @@ internal fun xyToDisplayRgb(x: Float, y: Float): Triple<Float, Float, Float> {
  * Each emitter i at relative level li contributes:
  *   Xi = li · xi/yi,   Yi = li,   Zi = li · (1−xi−yi)/yi
  * Chromaticity = (ΣXi / ΣXYZi, ΣYi / ΣXYZi)
+ *
+ * Subtractive channels (ColorSub_*, ColorCMY_*): inverted — lvl=max = no filter (white),
+ * lvl=0 = fully saturated color. effective_li = max - lvl.
  */
 fun channelsToXy(channels: List<ChannelDef>, values: Map<Int, Int>): Pair<Float, Float> {
     var sumX = 0f; var sumY = 0f; var sumZ = 0f
     for (ch in channels) {
         val (xi, yi) = resolveEmitterXy(ch.name) ?: continue
         if (yi < 1e-6f) continue
-        val li = (values[ch.offset] ?: ch.defaultValue).toFloat() / ch.maxValue
+        val lvl = (values[ch.offset] ?: ch.defaultValue).toFloat() / ch.maxValue
+        val isSub = ch.name.startsWith("ColorSub_") || ch.name.startsWith("ColorCMY_")
+        val li = if (isSub) (ch.maxValue - (values[ch.offset] ?: ch.defaultValue)).toFloat() / ch.maxValue else lvl
         sumX += li * xi / yi
         sumY += li
         sumZ += li * (1f - xi - yi) / yi
@@ -126,6 +131,10 @@ fun channelsToXy(channels: List<ChannelDef>, values: Map<Int, Int>): Pair<Float,
  *   ∂y/∂li = (yi − y) / (yi · S)
  *
  * We descend the squared chromaticity error, project to [0, maxValue].
+ *
+ * Subtractive channels (ColorSub_*, ColorCMY_*): inverted — lvl=0 means
+ * fully saturated color filter, lvl=max means no filter (white).
+ * For these, effective_li = max[i] - lvl[i] for the emitter contribution.
  */
 fun solveEmitterMix(
     targetX : Float, targetY : Float,
@@ -135,11 +144,20 @@ fun solveEmitterMix(
     if (channels.isEmpty()) return emptyMap()
     val n   = channels.size
     val max = FloatArray(n) { channels[it].maxValue.toFloat() }
+    // true for channels where zero = saturated color, max = white
+    val isSubtractive = BooleanArray(n) {
+        val name = channels[it].name
+        name.startsWith("ColorSub_") || name.startsWith("ColorCMY_")
+    }
 
-    // Start from current values; if all dark, seed at 20 % of max
+    // Start from current values; seed at reasonable starting points
     val lvl = FloatArray(n) { i ->
         val cur = (values[channels[i].offset] ?: channels[i].defaultValue).toFloat()
-        if (cur < 1f) max[i] * 0.2f else cur
+        if (cur < 1f) {
+            // For additive: seed at 20% of max
+            // For subtractive: seed at 80% of max (mostly open filter = white)
+            if (isSubtractive[i]) max[i] * 0.8f else max[i] * 0.2f
+        } else cur
     }
 
     val alpha = 0.8f   // step size — large but stable with clamp
@@ -148,9 +166,11 @@ fun solveEmitterMix(
         for (i in 0 until n) {
             val (xi, yi) = resolveEmitterXy(channels[i].name) ?: return@repeat
             if (yi < 1e-6f) return@repeat
-            sumX += lvl[i] * xi / yi
-            sumY += lvl[i]
-            sumZ += lvl[i] * (1f - xi - yi) / yi
+            // Effective level: for subtractive, invert (max=no color, 0=saturated)
+            val effLvl = if (isSubtractive[i]) max[i] - lvl[i] else lvl[i]
+            sumX += effLvl * xi / yi
+            sumY += effLvl
+            sumZ += effLvl * (1f - xi - yi) / yi
         }
         val s = sumX + sumY + sumZ
         if (s < 1e-8f) return@repeat
@@ -163,8 +183,9 @@ fun solveEmitterMix(
             if (yi < 1e-6f) continue
             val dxdl = (xi - cx) / (yi * s)
             val dydl = (yi - cy) / (yi * s)
-            lvl[i] = (lvl[i] + alpha * (ex * dxdl + ey * dydl) * max[i])
-                .coerceIn(0f, max[i])
+            // For subtractive: gradient is inverted (lvl↑ = less color)
+            val grad = if (isSubtractive[i]) -(ex * dxdl + ey * dydl) else (ex * dxdl + ey * dydl)
+            lvl[i] = (lvl[i] + alpha * grad * max[i]).coerceIn(0f, max[i])
         }
     }
     return buildMap { for (i in 0 until n) put(channels[i].offset, lvl[i].toInt()) }
@@ -216,15 +237,19 @@ private fun canvas2Cie(ox: Float, oy: Float, w: Float, h: Float) =
  * Supports any set of COLOR-category channels (DR, R, RY, GY, G, C, B, I,
  * W, WW, CW, A, UV, L, …).  Touch/drag picks a target chromaticity and
  * solves the optimal emitter mix via gradient descent.
+ *
+ * @param overrideXy If provided, directly display this xy point instead of
+ *   computing from channels (used for xy pass-through fixtures).
  */
 @Composable
 fun CieColorPicker(
     colorChannels: List<ChannelDef>,
     values       : Map<Int, Int>,
-    onValueChange: (offset: Int, value: Int) -> Unit
+    onValueChange: (offset: Int, value: Int) -> Unit,
+    overrideXy   : Pair<Float, Float>? = null
 ) {
     val bitmap = rememberCieBitmap()
-    val (curX, curY) = channelsToXy(colorChannels, values)
+    val (curX, curY) = overrideXy ?: channelsToXy(colorChannels, values)
     val (pr, pg, pb) = xyToDisplayRgb(curX, curY)
     val previewColor  = Color(red = pr, green = pg, blue = pb)
 

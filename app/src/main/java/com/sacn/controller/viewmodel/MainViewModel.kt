@@ -540,7 +540,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             it.category == ChannelCategory.COLOR || it.name.startsWith("Color")
         }
 
-        if (colorChannels.size >= 3) {
+        // Detect direct xy fixtures (CIE_X/CIE_Y or ColorCoordinate channels)
+        val cieX = mode.channels.find {
+            it.name in setOf("CIE_X", "CIE_x", "ColorCoordinate_X")
+        }
+        val cieY = mode.channels.find {
+            it.name in setOf("CIE_Y", "CIE_y", "ColorCoordinate_Y")
+        }
+
+        if (cieX != null && cieY != null) {
+            // Direct xy pass-through mode — scale D16xy values to fixture's DMX range
+            val xVal = (x * cieX.maxValue).toInt().coerceIn(0, cieX.maxValue)
+            val yVal = (y * cieY.maxValue).toInt().coerceIn(0, cieY.maxValue)
+            val newVals = mutableMapOf(cieX.offset to xVal, cieY.offset to yVal)
+
+            val dimmerChXY = mode.channels.find { it.category == ChannelCategory.INTENSITY }
+            if (dimmerChXY != null) {
+                newVals[dimmerChXY.offset] = (dimmer * dimmerChXY.maxValue).toInt().coerceIn(0, dimmerChXY.maxValue)
+            }
+
+            _state.update { st ->
+                val current = st.dmxValues[cfg.outputFixtureId]?.toMutableMap() ?: mutableMapOf()
+                current.putAll(newVals)
+                st.copy(dmxValues = st.dmxValues + (cfg.outputFixtureId to current))
+            }
+        } else if (colorChannels.size >= 3) {
+            // Multi-emitter mixing mode (RGB, RGBW, RGBA, etc.)
             val currentVals: Map<Int, Int> = s.dmxValues[cfg.outputFixtureId] ?: emptyMap()
             val mixResult: Map<Int, Int> = solveEmitterMix(x, y, colorChannels, currentVals)
             val newVals = mixResult.toMutableMap()

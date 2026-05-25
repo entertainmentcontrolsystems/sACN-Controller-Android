@@ -108,8 +108,14 @@ val GDTF_ATTRIBUTES: Map<String, AttributeInfo> = mapOf(
     "CTC"               to AttributeInfo("CTC",          ChannelCategory.COLOR),
     "ColorMacro1"       to AttributeInfo("Color Macro",  ChannelCategory.COLOR),
     "HSB_Hue"           to AttributeInfo("Hue",          ChannelCategory.COLOR),
-    "HSB_Saturation"    to AttributeInfo("Saturation",   ChannelCategory.COLOR),
-    "HSB_Brightness"    to AttributeInfo("Brightness",   ChannelCategory.COLOR),
+    "HSB_Saturation"     to AttributeInfo("Saturation",   ChannelCategory.COLOR),
+    "HSB_Brightness"     to AttributeInfo("Brightness",   ChannelCategory.COLOR),
+    "CIE_X"              to AttributeInfo("CIE X",        ChannelCategory.COLOR),
+    "CIE_Y"              to AttributeInfo("CIE Y",        ChannelCategory.COLOR),
+    "CIE_x"              to AttributeInfo("CIE x",        ChannelCategory.COLOR),
+    "CIE_y"              to AttributeInfo("CIE y",        ChannelCategory.COLOR),
+    "ColorCoordinate_X"  to AttributeInfo("CIE X",        ChannelCategory.COLOR),
+    "ColorCoordinate_Y"  to AttributeInfo("CIE Y",        ChannelCategory.COLOR),
 
     "Pan"               to AttributeInfo("Pan",          ChannelCategory.POSITION),
     "Tilt"              to AttributeInfo("Tilt",         ChannelCategory.POSITION),
@@ -162,6 +168,7 @@ fun resolveAttribute(attr: String): AttributeInfo =
 // ──────────────────────────────────────────────────────────────────────────────
 
 val EMITTER_XY: Map<String, Pair<Float, Float>> = mapOf(
+    // Additive primaries (ColorAdd_ prefix from GDTF)
     "ColorAdd_R"  to Pair(0.696f, 0.304f),  // Red        ~630 nm
     "ColorAdd_G"  to Pair(0.179f, 0.700f),  // Green      ~520 nm
     "ColorAdd_B"  to Pair(0.137f, 0.054f),  // Blue       ~450 nm
@@ -180,10 +187,22 @@ val EMITTER_XY: Map<String, Pair<Float, Float>> = mapOf(
     "ColorAdd_I"  to Pair(0.162f, 0.023f),  // Indigo     ~430 nm  (ETC I)
     "ColorAdd_C"  to Pair(0.075f, 0.565f),  // Cyan       ~500 nm  (ETC C)
     "ColorAdd_DR" to Pair(0.735f, 0.265f),  // Deep Red   ~660 nm  (ETC DR)
-    // Sub-traktive (CMY) approximations
+    // RGB mix channels (Arri, Martin, etc. use ColorRGB_ prefix)
+    "ColorRGB_R"  to Pair(0.696f, 0.304f),
+    "ColorRGB_G"  to Pair(0.179f, 0.700f),
+    "ColorRGB_B"  to Pair(0.137f, 0.054f),
+    "ColorRGB_W"  to Pair(0.320f, 0.336f),
+    "ColorRGB_RGB" to Pair(0.320f, 0.336f),
+    // Subtractrive CMY (inverted — full = white, 0 = saturated color)
+    // The EMITTER_XY values are the fully-saturated emitter coordinates.
+    // solveEmitterMix handles subtraction: for CMY, target = D65 - emitter*(1-lvl).
     "ColorSub_R"  to Pair(0.585f, 0.344f),
     "ColorSub_G"  to Pair(0.265f, 0.440f),
     "ColorSub_B"  to Pair(0.210f, 0.197f),
+    // Arri/Prolycht CMY variants
+    "ColorCMY_C"  to Pair(0.585f, 0.344f),
+    "ColorCMY_M"  to Pair(0.265f, 0.440f),
+    "ColorCMY_Y"  to Pair(0.210f, 0.197f),
     // CTO/CTB treated as white with CCT offset
     "CTO"         to Pair(0.440f, 0.403f),
     "CTB"         to Pair(0.294f, 0.311f),
