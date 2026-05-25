@@ -78,85 +78,10 @@ fun MainScreen(vm: MainViewModel) {
         containerColor = BgDark,
         // Action bar row: Save Look + Add menu
         topBar = {
-            Column {
-                // Group bar (collapses when no groups)
-                if (state.groups.isNotEmpty()) {
-                    GroupBar(
-                        groups = state.groups,
-                        onSelect = vm::selectGroup
-                    )
-                }
-                Surface(color = BgCard) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp, vertical = 0.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Multi-select badge
-                        if (state.multiSelectedIds.size >= 2) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.CheckBox, null, tint = Accent, modifier = Modifier.size(16.dp))
-                                Spacer(Modifier.width(4.dp))
-                                Text("${state.multiSelectedIds.size}", color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                            }
-                            Spacer(Modifier.width(8.dp))
-                        }
-                        // Fixture actions (Home, Lamp)
-                        val selId = if (state.multiSelectedIds.size == 1) state.multiSelectedIds.first()
-                                    else state.selectedFixtureId
-                        if (selId != null && state.fixtures.isNotEmpty()) {
-                            Box {
-                                IconButton(onClick = { showFixtureActions = true }) {
-                                    Icon(Icons.Default.Settings, "Fixture Actions", tint = TextSecond,
-                                        modifier = Modifier.size(18.dp))
-                                }
-                            }
-                        }
-                        Spacer(Modifier.weight(1f))
-                    if (state.fixtures.isNotEmpty()) {
-                        IconButton(onClick = { showSaveLookDialog = true }) {
-                            Icon(Icons.Default.Bookmark, "Save Look", tint = Accent)
-                        }
-                    }
-                    Box {
-                        IconButton(onClick = { showAddMenu = true }) {
-                            Icon(Icons.Default.Add, "Add", tint = TextPrimary)
-                        }
-                        DropdownMenu(
-                            expanded = showAddMenu, onDismissRequest = { showAddMenu = false },
-                            modifier = Modifier.background(BgRaised)
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Import Fixture Profile", color = TextPrimary) },
-                                leadingIcon = { Icon(Icons.Default.FileOpen, null, tint = Accent) },
-                                onClick = {
-                                    showAddMenu = false
-                                    profileLauncher.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                                        addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
-                                        putExtra(Intent.EXTRA_MIME_TYPES,
-                                            arrayOf("application/zip", "application/octet-stream", "*/*"))
-                                    })
-                                }
-                            )
-                            if (state.profiles.isNotEmpty()) {
-                                DropdownMenuItem(
-                                    text = { Text("Add Fixture to Rig", color = TextPrimary) },
-                                    leadingIcon = { Icon(Icons.Default.Lightbulb, null, tint = Warning) },
-                                    onClick = { showAddMenu = false; showAddFixtureDialog = true }
-                                )
-                            }
-                            if (state.multiSelectedIds.size >= 2) {
-                                DropdownMenuItem(
-                                    text = { Text("Save Group (${state.multiSelectedIds.size} selected)", color = TextPrimary) },
-                                    leadingIcon = { Icon(Icons.Default.Folder, null, tint = Color(0xFFCC88FF)) },
-                                    onClick = { showAddMenu = false; showSaveGroupDialog = true }
-                                )
-                            }
-                        }
-                    }
-                }
-            }
+            TopBarArea(state, vm, showAddMenu, showSaveLookDialog, showFixtureActions,
+                { showAddMenu = it }, { showSaveLookDialog = it }, { showFixtureActions = it },
+                profileLauncher, { showAddFixtureDialog = true }, { showSaveGroupDialog = true },
+                { showSaveGroupDialog = true })
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -891,4 +816,95 @@ private fun FixtureActionsDialog(
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecond) } }
     )
+}
+
+// ── TopBarArea — extracted from Scaffold to reduce nesting depth ────────────
+// Workaround for Kotlin 2.1.0 Windows compiler bug with deeply nested
+// Compose lambdas inside Scaffold parameters.
+
+@Composable
+private fun TopBarArea(
+    state: UiState,
+    vm: MainViewModel,
+    showAddMenu: Boolean,
+    showSaveLookDialog: Boolean,
+    showFixtureActions: Boolean,
+    setAddMenu: (Boolean) -> Unit,
+    setSaveLook: (Boolean) -> Unit,
+    setFixtureActions: (Boolean) -> Unit,
+    profileLauncher: androidx.activity.result.contract.ActivityResultLauncher<Intent>,
+    onAddFixture: () -> Unit,
+    onSaveGroup: () -> Unit,
+    showGroup: (Boolean) -> Unit
+) {
+    Column {
+        if (state.groups.isNotEmpty()) {
+            GroupBar(groups = state.groups, onSelect = vm::selectGroup)
+        }
+        Surface(color = BgCard) {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 0.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (state.multiSelectedIds.size >= 2) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CheckBox, null, tint = Accent, modifier = Modifier.size(16.dp))
+                        Spacer(Modifier.width(4.dp))
+                        Text("${state.multiSelectedIds.size}", color = Accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    }
+                    Spacer(Modifier.width(8.dp))
+                }
+                val selId = if (state.multiSelectedIds.size == 1) state.multiSelectedIds.first()
+                            else state.selectedFixtureId
+                if (selId != null && state.fixtures.isNotEmpty()) {
+                    Box {
+                        IconButton(onClick = { setFixtureActions(true) }) {
+                            Icon(Icons.Default.Settings, "Fixture Actions", tint = TextSecond, modifier = Modifier.size(18.dp))
+                        }
+                    }
+                }
+                Spacer(Modifier.weight(1f))
+                if (state.fixtures.isNotEmpty()) {
+                    IconButton(onClick = { setSaveLook(true) }) {
+                        Icon(Icons.Default.Bookmark, "Save Look", tint = Accent)
+                    }
+                }
+                Box {
+                    IconButton(onClick = { setAddMenu(true) }) {
+                        Icon(Icons.Default.Add, "Add", tint = TextPrimary)
+                    }
+                    DropdownMenu(
+                        expanded = showAddMenu, onDismissRequest = { setAddMenu(false) },
+                        modifier = Modifier.background(BgRaised)
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("Import Fixture Profile", color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Default.FileOpen, null, tint = Accent) },
+                            onClick = {
+                                setAddMenu(false)
+                                profileLauncher.launch(Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                                    addCategory(Intent.CATEGORY_OPENABLE); type = "*/*"
+                                    putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/zip", "application/octet-stream", "*/*"))
+                                })
+                            }
+                        )
+                        if (state.profiles.isNotEmpty()) {
+                            DropdownMenuItem(
+                                text = { Text("Add Fixture to Rig", color = TextPrimary) },
+                                leadingIcon = { Icon(Icons.Default.Lightbulb, null, tint = Warning) },
+                                onClick = { setAddMenu(false); onAddFixture() }
+                            )
+                        }
+                        if (state.multiSelectedIds.size >= 2) {
+                            DropdownMenuItem(
+                                text = { Text("Save Group (${state.multiSelectedIds.size} selected)", color = TextPrimary) },
+                                leadingIcon = { Icon(Icons.Default.Folder, null, tint = Color(0xFFCC88FF)) },
+                                onClick = { setAddMenu(false); onSaveGroup() }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
 }
