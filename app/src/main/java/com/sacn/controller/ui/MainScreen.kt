@@ -26,6 +26,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import com.sacn.controller.model.*
 import com.sacn.controller.viewmodel.MainViewModel
+import com.sacn.controller.viewmodel.UiState
 
 // ── Palette ───────────────────────────────────────────────────────────────────
 
