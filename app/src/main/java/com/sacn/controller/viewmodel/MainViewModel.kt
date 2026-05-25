@@ -325,6 +325,43 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /**
+     * Returns the next available start address in a universe by scanning
+     * existing fixtures and their footprints. Always returns at least 1.
+     */
+    fun nextAvailableAddress(universe: Int, footprint: Int): Int {
+        val fixtures = _state.value.fixtures
+            .filter { it.universe == universe }
+            .sortedBy { it.startAddress }
+
+        var candidate = 1
+        for (f in fixtures) {
+            val fEnd = f.startAddress + (profileById(f.profileId)
+                ?.modes?.getOrNull(f.modeIndex)?.footprint ?: 1) - 1
+            if (candidate + footprint - 1 < f.startAddress) break
+            candidate = maxOf(candidate, fEnd + 1)
+        }
+        return minOf(candidate, 512 - footprint + 1).coerceAtLeast(1)
+    }
+
+    /** Returns how many of the 512 DMX channels in a universe are occupied. */
+    fun universeOccupancy(universe: Int): BooleanArray {
+        val grid = BooleanArray(512)
+        val fixtures = _state.value.fixtures.filter { it.universe == universe }
+        for (f in fixtures) {
+            val footprint = profileById(f.profileId)
+                ?.modes?.getOrNull(f.modeIndex)?.footprint ?: 1
+            val start = f.startAddress - 1
+            for (i in start until minOf(start + footprint, 512)) {
+                grid[i] = true
+            }
+        }
+        return grid
+    }
+
+    private fun profileById(profileId: String): FixtureProfile? =
+        _state.value.profiles.find { it.id == profileId }
+
     fun removeFixture(fixtureId: String) { deleteFixture(fixtureId) }
 
     fun deleteFixture(fixtureId: String) {

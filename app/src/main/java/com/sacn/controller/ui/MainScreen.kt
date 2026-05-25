@@ -135,7 +135,8 @@ fun MainScreen(vm: MainViewModel) {
 
     if (showAddFixtureDialog) {
         AddFixtureDialog(profiles = state.profiles, existingFixtures = state.fixtures,
-            onAdd = { vm.addFixture(it) }, onDismiss = { showAddFixtureDialog = false })
+            onAdd = { vm.addFixture(it) }, onDismiss = { showAddFixtureDialog = false },
+            nextAddress = { uni, fp -> vm.nextAvailableAddress(uni, fp) })
     }
     if (showManualProfileDialog) {
         ManualProfileDialog(vm = vm, onDismiss = { showManualProfileDialog = false })
@@ -534,7 +535,8 @@ fun AddFixtureDialog(
     profiles        : List<FixtureProfile>,
     existingFixtures: List<FixtureInstance>,
     onAdd           : (FixtureInstance) -> Unit,
-    onDismiss       : () -> Unit
+    onDismiss       : () -> Unit,
+    nextAddress     : (universe: Int, footprint: Int) -> Int = { _, _ -> 1 }
 ) {
     var fixtureName         by remember { mutableStateOf("") }
     var selectedProfile     by remember { mutableStateOf(profiles.firstOrNull()) }
@@ -550,6 +552,14 @@ fun AddFixtureDialog(
             fixtureName = "${selectedProfile!!.name} $count"
         }
         selectedModeIndex = 0
+    }
+
+    // Auto-compute address when profile or universe changes
+    LaunchedEffect(selectedProfile, selectedModeIndex, universe) {
+        val modes = selectedProfile?.modes ?: emptyList()
+        val fp = modes.getOrNull(selectedModeIndex)?.footprint ?: 1
+        val uni = universe.toIntOrNull()?.coerceIn(1, 63999) ?: 1
+        address = nextAddress(uni, fp).toString()
     }
 
     AlertDialog(
