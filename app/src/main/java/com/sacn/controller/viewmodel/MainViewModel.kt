@@ -279,8 +279,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun importGdtf(ctx: Context, uri: Uri, name: String) {
         viewModelScope.launch {
             try {
-                val parser = GdtfParser()
-                val result: com.sacn.controller.gdtf.GdtfParser.ParseResult = parser.parse(ctx, uri, name)
+                val result = GdtfParser.parse(ctx, uri, name)
                 if (result.profile != null) {
                     db.profileDao().upsert(result.profile.toEntity())
                     _state.update { it.copy(statusMessage = "Imported $name") }
