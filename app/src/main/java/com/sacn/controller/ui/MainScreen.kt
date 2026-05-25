@@ -7,6 +7,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultLauncher
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.*
@@ -884,7 +885,7 @@ private fun TopBarArea(
     setAddMenu: (Boolean) -> Unit,
     setSaveLook: (Boolean) -> Unit,
     setFixtureActions: (Boolean) -> Unit,
-    profileLauncher: androidx.activity.result.contract.ActivityResultLauncher<Intent>,
+    profileLauncher: ActivityResultLauncher<Intent>,
     onAddFixture: () -> Unit,
     onSaveGroup: () -> Unit,
     showGroup: (Boolean) -> Unit
