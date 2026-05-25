@@ -341,10 +341,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { fixtures.deleteFixture(fixtureId) }
     }
 
-    fun updateFixture(fixture: FixtureInstance) {
-        viewModelScope.launch { fixtures.updateFixture(fixture) }
-    }
-
     // ═══════════════════════════════════════════════════════════════════════════
     //  Converter
     // ═══════════════════════════════════════════════════════════════════════════
