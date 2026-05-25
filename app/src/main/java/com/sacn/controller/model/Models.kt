@@ -100,9 +100,18 @@ val GDTF_ATTRIBUTES: Map<String, AttributeInfo> = mapOf(
     "ColorAdd_BC"       to AttributeInfo("Blue-Cyan",    ChannelCategory.COLOR),
     "ColorAdd_BM"       to AttributeInfo("Blue-Magenta", ChannelCategory.COLOR),
     "ColorAdd_RM"       to AttributeInfo("Red-Magenta",  ChannelCategory.COLOR),
-    "ColorSub_R"        to AttributeInfo("CMY Red",      ChannelCategory.COLOR),
-    "ColorSub_G"        to AttributeInfo("CMY Green",    ChannelCategory.COLOR),
-    "ColorSub_B"        to AttributeInfo("CMY Blue",     ChannelCategory.COLOR),
+    "ColorAdd_DR"        to AttributeInfo("Deep Red",     ChannelCategory.COLOR),
+    "ColorRGB_R"         to AttributeInfo("Red",          ChannelCategory.COLOR),
+    "ColorRGB_G"         to AttributeInfo("Green",        ChannelCategory.COLOR),
+    "ColorRGB_B"         to AttributeInfo("Blue",         ChannelCategory.COLOR),
+    "ColorRGB_W"         to AttributeInfo("White",        ChannelCategory.COLOR),
+    "ColorRGB_RGB"       to AttributeInfo("RGB Mix",      ChannelCategory.COLOR),
+    "ColorCMY_C"         to AttributeInfo("Cyan",         ChannelCategory.COLOR),
+    "ColorCMY_M"         to AttributeInfo("Magenta",      ChannelCategory.COLOR),
+    "ColorCMY_Y"         to AttributeInfo("Yellow",       ChannelCategory.COLOR),
+    "ColorSub_R"         to AttributeInfo("CMY Red",      ChannelCategory.COLOR),
+    "ColorSub_G"         to AttributeInfo("CMY Green",    ChannelCategory.COLOR),
+    "ColorSub_B"         to AttributeInfo("CMY Blue",     ChannelCategory.COLOR),
     "CTO"               to AttributeInfo("CTO",          ChannelCategory.COLOR),
     "CTB"               to AttributeInfo("CTB",          ChannelCategory.COLOR),
     "CTC"               to AttributeInfo("CTC",          ChannelCategory.COLOR),
@@ -158,7 +167,26 @@ val GDTF_ATTRIBUTES: Map<String, AttributeInfo> = mapOf(
 fun resolveAttribute(attr: String): AttributeInfo =
     GDTF_ATTRIBUTES[attr]
         ?: GDTF_ATTRIBUTES.entries.firstOrNull { attr.startsWith(it.key) }?.value
-        ?: AttributeInfo(attr, ChannelCategory.OTHER)
+        ?: attr.let { name ->
+            // Catch common color-related attribute patterns from various manufacturers
+            when {
+                name.startsWith("Color") || name.startsWith("COLOR") ->
+                    AttributeInfo(name.removePrefix("Color").removePrefix("COLOR")
+                        .replace("_", " ").trim(), ChannelCategory.COLOR)
+                name.startsWith("CTC") || name.startsWith("CTB") || name.startsWith("CTO") ->
+                    AttributeInfo(name, ChannelCategory.COLOR)
+                name in setOf("Hue", "HUE", "Saturation", "SAT", "Brightness") ||
+                    name.contains("Hue", ignoreCase = true) || 
+                    name.contains("Sat", ignoreCase = true) ->
+                    AttributeInfo(name, ChannelCategory.COLOR)
+                name.contains("CIE", ignoreCase = true) ||
+                    name.contains("chroma", ignoreCase = true) ||
+                    name.contains("xy", ignoreCase = true) ||
+                    name.startsWith("x_") || name.startsWith("y_") ->
+                    AttributeInfo(name, ChannelCategory.COLOR)
+                else -> AttributeInfo(attr, ChannelCategory.OTHER)
+            }
+        }
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Approximate emitter chromaticities for CIE 1931 xy picker

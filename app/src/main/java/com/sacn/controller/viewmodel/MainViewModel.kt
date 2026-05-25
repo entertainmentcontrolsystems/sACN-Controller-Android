@@ -537,15 +537,25 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val profile = s.profiles.find { it.id == fixture.profileId } ?: return
         val mode = profile.modes.getOrNull(fixture.modeIndex) ?: return
         val colorChannels = mode.channels.filter {
-            it.category == ChannelCategory.COLOR || it.name.startsWith("Color")
+            it.category == ChannelCategory.COLOR || it.name.startsWith("Color") ||
+            it.name.startsWith("COLOR") || it.name.contains("CIE", ignoreCase = true) ||
+            it.name.contains("xy", ignoreCase = true) ||
+            it.name.startsWith("CTC") || it.name.startsWith("CTB") || it.name.startsWith("CTO") ||
+            it.name.contains("Hue", ignoreCase = true) || it.name.contains("Sat", ignoreCase = true)
         }
 
-        // Detect direct xy fixtures (CIE_X/CIE_Y or ColorCoordinate channels)
+        // Detect direct xy fixtures (CIE_X/CIE_Y, ColorCoordinate, or any x/y channel pair)
         val cieX = mode.channels.find {
-            it.name in setOf("CIE_X", "CIE_x", "ColorCoordinate_X")
+            val n = it.name
+            n in setOf("CIE_X", "CIE_x", "ColorCoordinate_X", "x_coordinate", "x_Coordinate") ||
+            (n.contains("CIE", ignoreCase = true) && n.contains("X")) ||
+            (n.contains("xy", ignoreCase = true) && n.contains("X", ignoreCase = true))
         }
         val cieY = mode.channels.find {
-            it.name in setOf("CIE_Y", "CIE_y", "ColorCoordinate_Y")
+            val n = it.name
+            n in setOf("CIE_Y", "CIE_y", "ColorCoordinate_Y", "y_coordinate", "y_Coordinate") ||
+            (n.contains("CIE", ignoreCase = true) && n.contains("Y")) ||
+            (n.contains("xy", ignoreCase = true) && n.contains("Y", ignoreCase = true))
         }
 
         if (cieX != null && cieY != null) {
