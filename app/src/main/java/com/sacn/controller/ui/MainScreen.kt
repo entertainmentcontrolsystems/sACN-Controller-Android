@@ -726,10 +726,11 @@ fun SaveLookDialog(onSave: (String) -> Unit, onDismiss: () -> Unit) {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 @Composable
-internal fun DarkTextField(value: String, onValueChange: (String) -> Unit, label: String, modifier: Modifier = Modifier) {
+internal fun DarkTextField(value: String, onValueChange: (String) -> Unit, label: String, modifier: Modifier = Modifier, keyboardOptions: KeyboardOptions? = null) {
     OutlinedTextField(
         value = value, onValueChange = onValueChange, label = { Text(label, color = TextSecond) },
         singleLine = true, modifier = modifier.fillMaxWidth(),
+        keyboardOptions = keyboardOptions ?: KeyboardOptions.Default,
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Accent, unfocusedBorderColor = Color(0xFF444455),
             focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary, cursorColor = Accent,
