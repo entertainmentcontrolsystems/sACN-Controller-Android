@@ -38,10 +38,10 @@ internal val Accent      = Color(0xFF4D9EFF)
 internal val AccentDim   = Color(0xFF264F80)
 internal val TextPrimary = Color(0xFFE8E8F0)
 internal val TextSecond  = Color(0xFF8888AA)
-private  val Success     = Color(0xFF44CC88)
-private  val Warning     = Color(0xFFFFAA33)
+internal val Success     = Color(0xFF44CC88)
+internal val Warning     = Color(0xFFFFAA33)
 
-private fun categoryColor(cat: ChannelCategory) = when (cat) {
+internal fun categoryColor(cat: ChannelCategory) = when (cat) {
     ChannelCategory.INTENSITY -> Color(0xFFFFDD66)
     ChannelCategory.COLOR     -> Color(0xFF88EEFF)
     ChannelCategory.POSITION  -> Color(0xFFCC88FF)
@@ -58,8 +58,9 @@ fun MainScreen(vm: MainViewModel) {
     val state by vm.state.collectAsState()
     val ctx   = LocalContext.current
 
-    var showAddFixtureDialog by remember { mutableStateOf(false) }
-    var showAddMenu          by remember { mutableStateOf(false) }
+    var showAddFixtureDialog   by remember { mutableStateOf(false) }
+    var showManualProfileDialog by remember { mutableStateOf(false) }
+    var showAddMenu            by remember { mutableStateOf(false) }
     var showSaveLookDialog   by remember { mutableStateOf(false) }
     var showSaveGroupDialog  by remember { mutableStateOf(false) }
     var showFixtureActions   by remember { mutableStateOf(false) }
@@ -83,7 +84,7 @@ fun MainScreen(vm: MainViewModel) {
             TopBarArea(state, vm, showAddMenu, showSaveLookDialog, showFixtureActions,
                 { showAddMenu = it }, { showSaveLookDialog = it }, { showFixtureActions = it },
                 profileLauncher, { showAddFixtureDialog = true }, { showSaveGroupDialog = true },
-                { showSaveGroupDialog = true })
+                { showSaveGroupDialog = true }, createManualProfile = { showManualProfileDialog = true })
         },
     ) { padding ->
         Column(Modifier.fillMaxSize().padding(padding)) {
@@ -134,6 +135,9 @@ fun MainScreen(vm: MainViewModel) {
     if (showAddFixtureDialog) {
         AddFixtureDialog(profiles = state.profiles, existingFixtures = state.fixtures,
             onAdd = { vm.addFixture(it) }, onDismiss = { showAddFixtureDialog = false })
+    }
+    if (showManualProfileDialog) {
+        ManualProfileDialog(vm = vm, onDismiss = { showManualProfileDialog = false })
     }
     editingFixture?.let { f ->
         EditFixtureDialog(fixture = f, profiles = state.profiles,
@@ -722,7 +726,7 @@ fun SaveLookDialog(onSave: (String) -> Unit, onDismiss: () -> Unit) {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun DarkTextField(value: String, onValueChange: (String) -> Unit, label: String, modifier: Modifier = Modifier) {
+internal fun DarkTextField(value: String, onValueChange: (String) -> Unit, label: String, modifier: Modifier = Modifier) {
     OutlinedTextField(
         value = value, onValueChange = onValueChange, label = { Text(label, color = TextSecond) },
         singleLine = true, modifier = modifier.fillMaxWidth(),
@@ -888,7 +892,8 @@ private fun TopBarArea(
     profileLauncher: ActivityResultLauncher<Intent>,
     onAddFixture: () -> Unit,
     onSaveGroup: () -> Unit,
-    showGroup: (Boolean) -> Unit
+    showGroup: (Boolean) -> Unit,
+    createManualProfile: () -> Unit = {}
 ) {
     Column {
         if (state.groups.isNotEmpty()) {
@@ -940,6 +945,11 @@ private fun TopBarArea(
                                     putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/zip", "application/octet-stream", "*/*"))
                                 })
                             }
+                        )
+                        DropdownMenuItem(
+                            text = { Text("Create Manual Profile", color = TextPrimary) },
+                            leadingIcon = { Icon(Icons.Default.Build, null, tint = Warning) },
+                            onClick = { setAddMenu(false); createManualProfile() }
                         )
                         if (state.profiles.isNotEmpty()) {
                             DropdownMenuItem(

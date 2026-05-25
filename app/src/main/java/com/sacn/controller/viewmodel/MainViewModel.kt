@@ -296,6 +296,28 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { db.profileDao().deleteById(profileId) }
     }
 
+    fun createManualProfile(
+        manufacturer: String,
+        name: String,
+        channels: List<ChannelDef>
+    ) {
+        val mode = DMXMode(
+            name = "Standard",
+            channels = channels,
+            footprint = channels.maxOfOrNull { it.offset } ?: 0
+        )
+        val profile = FixtureProfile(
+            manufacturer = manufacturer.ifBlank { "Manual" },
+            name = name,
+            modes = listOf(mode),
+            gdtfFileName = ""
+        )
+        viewModelScope.launch {
+            db.profileDao().upsert(profile.toEntity())
+            _state.update { it.copy(statusMessage = "Profile \"$name\" created") }
+        }
+    }
+
     fun addFixture(fixture: FixtureInstance) {
         viewModelScope.launch {
             val order = 0
