@@ -44,6 +44,7 @@ class CueListEngine {
 
     private var job: Job? = null
     private var fadeJob: Job? = null
+    private var activeScope: CoroutineScope? = null
 
     /** Source values for the fading-from cue (previous step or black) */
     private var fadeSource: Map<String, Map<Int, Int>> = emptyMap()
@@ -55,6 +56,7 @@ class CueListEngine {
      */
     fun start(cueList: CueList, scope: CoroutineScope) {
         stop()
+        this.activeScope = scope
         this.cueList = cueList.copy(currentStepIndex = -1, isRunning = true)
         updateState {
             PlaybackState(
@@ -75,6 +77,7 @@ class CueListEngine {
         job?.cancel()
         fadeJob = null
         job = null
+        activeScope = null
         fadeSource = emptyMap()
         updateState { PlaybackState() }
     }
@@ -200,7 +203,8 @@ class CueListEngine {
         }
 
         val startMs = System.currentTimeMillis()
-        while (isActive) {
+        val scope = activeScope ?: return
+        while (scope.isActive) {
             val elapsed = System.currentTimeMillis() - startMs
             val progress = (elapsed.toFloat() / duration).coerceIn(0f, 1f)
             val live = interpolate(source, target, progress)
@@ -222,16 +226,14 @@ class CueListEngine {
         updateState { copy(isFading = false, fadeProgress = 1f) }
 
         // Auto-GO?
-        if (step.waitType == CueWaitType.TIMED && step.waitTimeMs > 0) {
-            // schedule next GO
-            job = (job as? CompletableJob)?.let { parent ->
-                parent.launch {
-                    delay(step.waitTimeMs)
-                    if (isActive) {
-                        goNext(this@CueListEngine.cueList!!, parent)
-                    }
+        if (step.waitType == CueWaitType.TIMED && step.waitTimeMs > 0 && activeScope != null) {
+            val scope = activeScope!!
+            job = scope.launch {
+                delay(step.waitTimeMs)
+                if (isActive) {
+                    goNext(this@CueListEngine.cueList!!, scope)
                 }
-            } ?: return
+            }
         }
     }
 

@@ -790,6 +790,57 @@ private fun GroupBar(
 // ── Fixture Actions Dialog ────────────────────────────────────────────────────
 
 @Composable
+private fun ActionRow(
+    title: String,
+    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onClick() }.padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = title, tint = Accent, modifier = Modifier.size(24.dp))
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(title, color = TextPrimary, fontSize = 14.sp)
+            Text(description, color = TextSecond, fontSize = 12.sp)
+        }
+    }
+}
+
+@Composable
+private fun SaveGroupDialog(
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = BgCard,
+        title = { Text("Save Group", color = TextPrimary) },
+        text = {
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                label = { Text("Group Name", color = TextSecond) },
+                singleLine = true,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary
+                )
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { if (name.isNotBlank()) { onSave(name); onDismiss() } }) {
+                Text("Save", color = Accent)
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = TextSecond) } }
+    )
+}
+
+@Composable
 private fun FixtureActionsDialog(
     fixtureId: String,
     onAction: (FixtureAction) -> Unit,
