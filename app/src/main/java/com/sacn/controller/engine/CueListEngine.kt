@@ -56,7 +56,14 @@ class CueListEngine {
     fun start(cueList: CueList, scope: CoroutineScope) {
         stop()
         this.cueList = cueList.copy(currentStepIndex = -1, isRunning = true)
-        updateState { cueList = this@CueListEngine.cueList }
+        updateState {
+            PlaybackState(
+                cueListId = cueList.id,
+                cueListName = cueList.name,
+                totalSteps = cueList.steps.size,
+                isPlaying = true
+            )
+        }
 
         if (cueList.steps.isNotEmpty()) {
             goNext(cueList, scope)

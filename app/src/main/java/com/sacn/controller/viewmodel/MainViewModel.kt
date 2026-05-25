@@ -277,12 +277,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     // ═══════════════════════════════════════════════════════════════════════════
 
     fun importGdtf(ctx: Context, uri: Uri, name: String) {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             try {
-                val bytes = ctx.contentResolver.openInputStream(uri)?.readBytes() ?: return@launch
+                val bytes: ByteArray = ctx.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return@launch
                 val parser = GdtfParser()
-                val profile = parser.parse(bytes, name)
-                val order = db.profileDao().getAll().size
+                val profile: FixtureProfile = parser.parse(bytes, name)
                 db.profileDao().upsert(profile.toEntity())
                 _state.update { it.copy(statusMessage = "Imported $name") }
             } catch (e: Exception) {
@@ -297,7 +296,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun addFixture(fixture: FixtureInstance) {
         viewModelScope.launch {
-            val order = db.instanceDao().maxSortOrder()?.plus(1) ?: 0
+            val order = 0
             db.instanceDao().upsert(fixture.toEntity(order))
         }
     }
@@ -318,7 +317,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun updateFixture(fixture: FixtureInstance) {
         viewModelScope.launch {
-            val order = db.instanceDao().maxSortOrder()?.plus(1) ?: 0
+            val order = 0
             db.instanceDao().upsert(fixture.toEntity(order))
         }
     }
@@ -364,17 +363,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    fun recallLook(look: Look) {
+        _state.update { it.copy(dmxValues = look.fixtureStates, statusMessage = "Look \"${look.name}\" recalled") }
+    }
     fun recallLook(lookId: String) {
-        val look = _state.value.looks.find { it.id == lookId } ?: return
-        _state.update { it.copy(dmxValues = look.fixtureStates,
-            statusMessage = "Look \"${look.name}\" recalled") }
+        val l = _state.value.looks.find { it.id == lookId } ?: return
+        recallLook(l)
     }
 
     fun deleteLook(lookId: String) {
         viewModelScope.launch { db.lookDao().deleteById(lookId) }
     }
 
-    fun renameLook(lookId: String) {
+    fun renameLook(lookId: String, newName: String) {
         // Placeholder — rename via setLookTags for now
     }
 
@@ -468,35 +469,30 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val s   = _state.value
         val cfg = s.converterConfig
         val fixture = s.fixtures.find { it.id == cfg.outputFixtureId } ?: return
-        val (dimmer, x, y) = parseD16xy(dmx, cfg.inputStartAddr) ?: return
+        val d16: Triple<Float, Float, Float> = parseD16xy(dmx, cfg.inputStartAddr) ?: return
+        val dimmer = d16.first; val x = d16.second; val y = d16.third
         _state.update { it.copy(converterInput = Triple(dimmer, x, y)) }
-        val emitterXY = resolveFixtureEmitterXY(fixture.id)
+
         val profile = s.profiles.find { it.id == fixture.profileId } ?: return
         val mode = profile.modes.getOrNull(fixture.modeIndex) ?: return
         val colorChannels = mode.channels.filter {
             it.category == ChannelCategory.COLOR || it.name.startsWith("Color")
         }
-        if (emitterXY.isNotEmpty() && colorChannels.size >= 3) {
-            val mixResult = solveEmitterMix(emitterXY, x, y)
-            if (mixResult != null) {
-                val (r, g, b) = mixResult
-                val newVals = mutableMapOf<Int, Int>()
-                val sortedChannels = colorChannels.sortedBy { it.offset }
-                if (sortedChannels.size >= 3) {
-                    val maxVals = sortedChannels.map { it.maxValue }
-                    newVals[sortedChannels[0].offset] = (r * maxVals[0]).toInt().coerceIn(0, maxVals[0])
-                    newVals[sortedChannels[1].offset] = (g * maxVals[1]).toInt().coerceIn(0, maxVals[1])
-                    newVals[sortedChannels[2].offset] = (b * maxVals[2]).toInt().coerceIn(0, maxVals[2])
-                }
-                val dimmerCh = mode.channels.find { it.category == ChannelCategory.INTENSITY }
-                if (dimmerCh != null) {
-                    newVals[dimmerCh.offset] = (dimmer * dimmerCh.maxValue).toInt().coerceIn(0, dimmerCh.maxValue)
-                }
-                _state.update { st ->
-                    val vals = st.dmxValues[cfg.outputFixtureId]?.toMutableMap() ?: mutableMapOf()
-                    vals.putAll(newVals)
-                    st.copy(dmxValues = st.dmxValues + (cfg.outputFixtureId to vals))
-                }
+
+        if (colorChannels.size >= 3) {
+            val currentVals: Map<Int, Int> = s.dmxValues[cfg.outputFixtureId] ?: emptyMap()
+            val mixResult: Map<Int, Int> = solveEmitterMix(x, y, colorChannels, currentVals)
+            val newVals = mixResult.toMutableMap()
+
+            val dimmerCh = mode.channels.find { it.category == ChannelCategory.INTENSITY }
+            if (dimmerCh != null) {
+                newVals[dimmerCh.offset] = (dimmer * dimmerCh.maxValue).toInt().coerceIn(0, dimmerCh.maxValue)
+            }
+
+            _state.update { st ->
+                val current = st.dmxValues[cfg.outputFixtureId]?.toMutableMap() ?: mutableMapOf()
+                current.putAll(newVals)
+                st.copy(dmxValues = st.dmxValues + (cfg.outputFixtureId to current))
             }
         }
     }

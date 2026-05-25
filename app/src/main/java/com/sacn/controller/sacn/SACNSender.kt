@@ -7,6 +7,6 @@ package com.sacn.controller.sacn
 typealias SACNSender = com.ecs.sacn.common.SACNSender
 typealias SACNReceiver = com.ecs.sacn.common.SACNReceiver
 typealias UniverseData = com.ecs.sacn.common.UniverseData
-val dmx16 = com.ecs.sacn.common.dmx16
-val dmx16Norm = com.ecs.sacn.common.dmx16Norm
-val parseD16xy = com.ecs.sacn.common.parseD16xy
+fun dmx16(coarse: Byte, fine: Byte): Int = com.ecs.sacn.common.dmx16(coarse, fine)
+fun dmx16Norm(coarse: Byte, fine: Byte): Float = com.ecs.sacn.common.dmx16Norm(coarse, fine)
+fun parseD16xy(dmx: ByteArray, startAddr: Int): Triple<Float, Float, Float>? = com.ecs.sacn.common.parseD16xy(dmx, startAddr)

@@ -120,7 +120,7 @@ private fun UniverseMonitorView(
 
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier.weight(1f)
+        modifier = Modifier.fillMaxSize()
     ) {
         // DMX header
         item(key = "hdr") {
