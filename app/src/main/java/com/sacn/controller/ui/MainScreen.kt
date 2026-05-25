@@ -158,7 +158,9 @@ fun MainScreen(vm: MainViewModel) {
                 }
             }
         },
-        bottomBar = {
+    ) { padding ->
+        Column(Modifier.fillMaxSize().padding(padding)) {
+            // Looks bar (moved from Scaffold bottomBar to avoid Kotlin 2.1 compiler issue)
             if (state.looks.isNotEmpty()) {
                 LooksBar(
                     looks = state.looks,
@@ -168,9 +170,6 @@ fun MainScreen(vm: MainViewModel) {
                     onSetTags = vm::setLookTags
                 )
             }
-        }
-    ) { padding ->
-        Column(Modifier.fillMaxSize().padding(padding)) {
             if (state.fixtures.isNotEmpty()) {
                 FixtureSelectorStrip(
                     fixtures      = state.fixtures,
