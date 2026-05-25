@@ -278,19 +278,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     fun importGdtf(ctx: Context, uri: Uri, name: String) {
         viewModelScope.launch {
-            withContext(Dispatchers.IO) {
-                try {
-                    val parser = GdtfParser()
-                    val result = parser.parse(ctx, uri, name)
-                    if (result.profile != null) {
-                        db.profileDao().upsert(result.profile.toEntity())
-                        _state.update { it.copy(statusMessage = "Imported $name") }
-                    } else {
-                        _state.update { it.copy(statusMessage = "Failed to parse $name") }
-                    }
-                } catch (e: Exception) {
-                    _state.update { it.copy(statusMessage = "Import failed: ${e.message}") }
+            try {
+                val parser = GdtfParser()
+                val result: com.sacn.controller.gdtf.GdtfParser.ParseResult = parser.parse(ctx, uri, name)
+                if (result.profile != null) {
+                    db.profileDao().upsert(result.profile.toEntity())
+                    _state.update { it.copy(statusMessage = "Imported $name") }
+                } else {
+                    _state.update { it.copy(statusMessage = "Failed to parse $name") }
                 }
+            } catch (e: Exception) {
+                _state.update { it.copy(statusMessage = "Import failed: ${e.message}") }
             }
         }
     }
